@@ -39,6 +39,8 @@ def read_menu_choice():
 
 
 def select_coutry(country_list):
+    '''Lets user select one from all matching the request countries. '''
+
     list_length = len(country_list)
     if  list_length == 1:
         return country_list
@@ -49,7 +51,11 @@ def select_coutry(country_list):
         for i,country in enumerate(country_list,start=1):
             print(f'{i}.', country['name'])
 
-        user_choice = input(f"Enter a number from 1 to {list_length}: ")
+        user_choice = input(f"Enter a number from 1 to {list_length}: ").casefold().strip()
+
+        if isinstance(user_choice, str): 
+            if user_choice == "exit":
+                return None
 
         try:
             num = int(user_choice)
@@ -60,7 +66,8 @@ def select_coutry(country_list):
                 input(f"The number you entered is out of range. ")
 
         except:
-            input(f"Provided input is not a valid whole number within the range. ")
+            print(f"The provided input is not a valid whole number between 1 and {list_length}. ")
+            input('Press "Enter" to continue. ')
    
 
    
@@ -79,6 +86,8 @@ def try_again():
 
 
 def fetch_countries(country_query):
+    '''In: string. Out: Full list of countries matches string'''
+
     URL = 'https://countries.dev/name/'
 
     while True:
@@ -96,13 +105,14 @@ def fetch_countries(country_query):
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError):
             print('A сonnection or timeout error occured while trying to connect to the remote server. ')
+
             if try_again():
                 continue 
             else:
                 break 
     
         except ValueError:
-            input('Error. Inappropriate argument value (of correct type). Press "Enter" to continue. ')
+            input('Error: Inappropriate argument value (of correct type). Press "Enter" to continue. ')
             
         else:
             return country_list
@@ -111,6 +121,8 @@ def fetch_countries(country_query):
 
 
 def read_country_query():
+    '''User's country name keyboard input'''
+
     user_country_input = None
 
     while True:
@@ -132,6 +144,10 @@ def read_country_query():
 def output_to_display(country):
     clear_terminal()
 
+    if not isinstance(country, list):
+        input('Error: Expected to recieve a list of countries to display. Press "Enter" to continue. ')
+        return
+    
     if country:
         for c in country:
             print("Country: ", c['name']) 
@@ -142,9 +158,22 @@ def output_to_display(country):
 
 
 def find_and_select_country(country_num = None):
+    ''' Fetches all matching countries and lets user select one. 
+        country_num (int) How many countries need to be searched'''
+
+    if not isinstance(country_num, int) and country_num is not None:
+        input('Error: Expected an integer value for the country count.\nPress "Enter" to continue. ')
+        return
+
+    elif country_num is None:
+        NUM_OF_COUNTRIES = 1
+    else:
+        NUM_OF_COUNTRIES = country_num
+
+    country_index = 1
     county_list_to_display=[]
 
-    while True:
+    while country_index <= NUM_OF_COUNTRIES:
         country_query = read_country_query()
 
         if country_query is None:
@@ -155,28 +184,37 @@ def find_and_select_country(country_num = None):
         if isinstance(t_county_list, list):
             t_country_to_display = select_coutry(t_county_list)
             
-            if isinstance(t_country_to_display, dict) and t_country_to_display is not None:
-                county_list_to_display.append(t_country_to_display)
-                break
+            if isinstance(t_country_to_display, dict):
+                county_list_to_display.append(t_country_to_display)  # final country list that goes to output function 
+                country_index += 1
+                continue
+            
+            elif t_country_to_display is None:
+                    return None
             else:
-                input('Error. Expected to recieve a country dict. Press "Enter" to continue. ')
+                input('Error: Expected to recieve a country dict. Press "Enter" to continue. ')
                 
         elif t_county_list is None:
                 continue
+                    
         else:
-            input('Error. Expected to recieve a list of countries. Press "Enter" to continue. ')
+            input('Error: Expected to recieve a list of countries. Press "Enter" to continue. ')
 
-    if isinstance(county_list_to_display, list) and county_list_to_display is not None:
-            output_to_display(county_list_to_display)
-    else:
-            input('Error. Expected to recieve a list of countries to display. Press "Enter" to continue. ')
+    return county_list_to_display
+
+   
     #input(f'Debug: find_and_select_country(). returned: {country_query}')
 
 
 def run_country_search():
     clear_terminal()
 
-    country_list = find_and_select_country()
+    coutry_list = find_and_select_country()
+    if coutry_list is None:
+        return
+    
+    output_to_display(coutry_list)
+
     # input(f'\nDebug: End of run_country_search(). {type(country_list)}')
 
 
@@ -184,7 +222,15 @@ def run_country_search():
 def run_country_comparison():
     clear_terminal()
 
-    #input('Debug: End of run_country_comparison()')
+    NUM_OF_COUNTRIES_TO_COMPARE = 2
+
+    coutry_list = find_and_select_country(NUM_OF_COUNTRIES_TO_COMPARE)
+    if coutry_list is None:
+        return
+        
+    output_to_display(coutry_list)
+    
+    # input('Debug: End of run_country_comparison()')
 
            
 def main():
@@ -197,7 +243,6 @@ def main():
             case None:
                 break
 
-    # input('Press "Enter" to continue...')
        
 main()
 
