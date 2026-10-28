@@ -26,7 +26,6 @@ def read_menu_choice():
                 print("Error: Choice can't be empty")
             else: 
                 print('Error: Invalid choice. Use only "1","2" or "exit"')
-            invalid_choice = True
 
         user_choice = input('Enter "1" or "2". Type "exit" to quit: ').casefold().strip()
 
@@ -38,49 +37,53 @@ def read_menu_choice():
             invalid_choice = True
 
 
-def select_coutry(country_list):
+def select_country(country_list):
     '''Lets user select one from all matching the request countries. '''
 
     list_length = len(country_list)
     if  list_length == 1:
-        return country_list
+        return country_list[0]
 
     while True:
         clear_terminal()
 
-        for i,country in enumerate(country_list,start=1):
+        for i,country in enumerate(country_list, start = 1):
             print(f'{i}.', country['name'])
 
-        user_choice = input(f"Enter a number from 1 to {list_length}: ").casefold().strip()
+        user_choice = input(f'Enter a number from 1 to {list_length} or type "exit" to go back to Main Menu: ').casefold().strip()
+        print()
 
-        if isinstance(user_choice, str): 
-            if user_choice == "exit":
-                return None
+        if user_choice == "exit":
+            return None
 
         try:
             num = int(user_choice)
-
+        except ValueError:
+            print(f"The provided input is not a valid whole number between 1 and {list_length}. ")
+            input('Press "Enter" to continue. ')
+        else:
             if 1 <= num <= list_length:
                 return country_list[num-1]
             else:
-                input(f"The number you entered is out of range. ")
-
-        except:
-            print(f"The provided input is not a valid whole number between 1 and {list_length}. ")
-            input('Press "Enter" to continue. ')
+                input(f'The number you entered is out of range. Press "Enter" to continue. ')
    
+  
+def try_again(in_string = None):
+    '''Prints 'Would you like to try again (y/n):' by default. Or in_string (str) is specified" 
+    returns True or False'''
 
-   
-def try_again():
-    answer = ""
+    if in_string == None:
+        output_string = "Would you like to try again (y/n): "
+    else:
+        output_string = str(in_string)
 
-    while answer != "y" or answer != "n":
-        answer = input("Would you like to try again (y/n): ").casefold().strip()
+    while True:
+        answer = input(output_string).casefold().strip()
 
         clear_terminal()
 
         if answer == "y":
-            return True
+            return True 
         elif answer == "n":
             return False
 
@@ -98,125 +101,187 @@ def fetch_countries(country_query):
 
         except requests.exceptions.HTTPError as err:
             if err.response.status_code == 404:
-                input('Nothing matches your request. Press "Enter" to continue. ')
+                print('Nothing matches your request. ')
+                return None
             else:
-                input('An HTTP error occurred. Press "Enter" to continue. ')
+                print('An HTTP error occurred. ')
+                if try_again():
+                    continue
+                else:
+                    return None
 
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError):
-            print('A сonnection or timeout error occured while trying to connect to the remote server. ')
+            print('A сonnection or timeout error occurred while trying to connect to the remote server. ')
 
             if try_again():
-                continue 
+                continue
             else:
-                break 
-    
+                return None
+
         except ValueError:
-            input('Error: Inappropriate argument value (of correct type). Press "Enter" to continue. ')
+            input('Error: Could not process the server response. Press "Enter" to continue. ')
+            return None
             
         else:
-            return country_list
+            if not isinstance(country_list, list):
+                input('Error: Expected to receive a list of countries. Press "Enter" to continue. ')
+                return None
+            
+            if not country_list:
+                input('Nothing matches your request. Press "Enter" to continue. ')
+                return None
+            
+            for country in country_list:
+                if not isinstance(country, dict):
+                    input('Error: Expected to receive a country dict. Press "Enter" to continue. ')
+                    return None
 
-        break
+                if not country:
+                    input('Error: received an empty dict. Press "Enter" to continue. ')
+                    return None
 
+                if "name" not in country:
+                    input('Error: Key "name" is missing. Press "Enter" to continue. ')
+                    return None
 
-def read_country_query():
+                value = country["name"]
+                if  value is not None and str(value).strip() != "": 
+                    continue
+                else:
+                    input('Error: Received an invalid or empty country name. Press "Enter" to continue. ')
+                    return None 
+                
+            return country_list 
+              
+
+def read_country_query(country_num = None):
     '''User's country name keyboard input'''
+
+    if country_num is None:
+        country_num=""
 
     user_country_input = None
 
     while True:
         clear_terminal()
 
-        user_country_input = input('Enter country name or "exit" to go back to Main Menu: ').casefold().strip()
+        user_country_input = input(f'Enter {country_num} country name or "exit" to go back to Main Menu: ').casefold().strip()
+        print()
 
         if user_country_input == "":
             input('Error: Country name can\'t be empty. Press "Enter" to continue. ')
-
-        if user_country_input == 'exit':
+        elif user_country_input == "exit":
             return None
-        elif user_country_input == "":
-            continue
         else:
             return user_country_input      
 
 
-def output_to_display(country):
+def output_to_display(countries):
+    '''Output as a table: Name, Capital, Population, Area'''
     clear_terminal()
 
-    if not isinstance(country, list):
-        input('Error: Expected to recieve a list of countries to display. Press "Enter" to continue. ')
+    if not isinstance(countries, list):
+        input('Error: Expected to receive a list of countries to display. Press "Enter" to continue. ')
         return
-    
-    if country:
-        for c in country:
-            print("Country: ", c['name']) 
 
-        input('Press "Enter" to return to Main Menu.')
-        
-    return  
+    COLUMN_HEADERS = {"name": "Country",
+                      "capital": "Capital",
+                      "population": "Population",
+                      "area": "Area"}
+
+    col_widths = {}
+    # looking for a max width for each column and store it in col_widths
+    for col, header_text in COLUMN_HEADERS.items():
+        col_values = [str(row.get(col,'Not available')) for row in countries]
+        all_texts = col_values + [header_text]
+        max_width = max([len(text) for text in all_texts])
+        col_widths[col] = max_width + 2
+
+    # print header of the table
+    header_row = ""
+    for col, header_text in COLUMN_HEADERS.items():
+        width = col_widths[col]
+        header_row += f"{header_text:<{width}}"
+    print(header_row)
+
+    # print body of the table
+    for country in countries:
+        body_row=""
+        for key in COLUMN_HEADERS.keys():
+            width = col_widths[key]
+            value = country.get(key, 'Not available')
+
+            if isinstance(value, int):
+                 country_info = f"{value:,}"
+            else:
+                country_info = str(value)
+                
+            body_row+=f"{country_info:<{width}}"
+        print(body_row)
+
+    input('\nPress "Enter" to return to Main Menu.')  
 
 
-def find_and_select_country(country_num = None):
-    ''' Fetches all matching countries and lets user select one. 
-        country_num (int) How many countries need to be searched'''
+def find_and_select_country(country_count = None):
+    ''' Fetches all matching countries and lets user select one.
+        country_count (int) How many countries need to be searched'''
 
-    if not isinstance(country_num, int) and country_num is not None:
+    if not isinstance(country_count, int) and country_count is not None:
         input('Error: Expected an integer value for the country count.\nPress "Enter" to continue. ')
         return
-
-    elif country_num is None:
+    elif country_count is None:
         NUM_OF_COUNTRIES = 1
+    elif country_count <= 0:
+        input('Error: Expected a positive integer value more than zero for the country count.\nPress "Enter" to continue. ')
+        return None
     else:
-        NUM_OF_COUNTRIES = country_num
+        NUM_OF_COUNTRIES = country_count
+   
+    country_list_to_display= []
 
-    country_index = 1
-    county_list_to_display=[]
-
-    while country_index <= NUM_OF_COUNTRIES:
-        country_query = read_country_query()
+    while (len(country_list_to_display) + 1) <= NUM_OF_COUNTRIES:
+        if country_count is None:
+            country_query = read_country_query()
+        else:
+            country_query = read_country_query(len(country_list_to_display) + 1)
 
         if country_query is None:
-            return
+            return None
+       
+        t_country_list = fetch_countries(country_query)   # temp list
 
-        t_county_list = fetch_countries(country_query)
-
-        if isinstance(t_county_list, list):
-            t_country_to_display = select_coutry(t_county_list)
-            
-            if isinstance(t_country_to_display, dict):
-                county_list_to_display.append(t_country_to_display)  # final country list that goes to output function 
-                country_index += 1
+        if t_country_list is None:
+            if try_again("Do you want to search for another country name? (y/n): "):
                 continue
-            
-            elif t_country_to_display is None:
-                    return None
             else:
-                input('Error: Expected to recieve a country dict. Press "Enter" to continue. ')
-                
-        elif t_county_list is None:
-                continue
-                    
+                return None
+            
+        t_country_to_display = select_country(t_country_list)
+
+        if t_country_to_display is None:
+            return None
+        
+        if t_country_to_display in country_list_to_display:
+            input('The country you choose is already in the comparison list.\n' 
+                'Press "Enter" to choose a different country. ')
+            continue
         else:
-            input('Error: Expected to recieve a list of countries. Press "Enter" to continue. ')
+            country_list_to_display.append(t_country_to_display)  # final country list that goes to the output function
+    
+    return country_list_to_display
 
-    return county_list_to_display
-
-   
-    #input(f'Debug: find_and_select_country(). returned: {country_query}')
-
+ 
 
 def run_country_search():
     clear_terminal()
 
-    coutry_list = find_and_select_country()
-    if coutry_list is None:
+    country_list = find_and_select_country()
+
+    if country_list is None:
         return
     
-    output_to_display(coutry_list)
-
-    # input(f'\nDebug: End of run_country_search(). {type(country_list)}')
-
+    output_to_display(country_list)
 
 
 def run_country_comparison():
@@ -224,14 +289,12 @@ def run_country_comparison():
 
     NUM_OF_COUNTRIES_TO_COMPARE = 2
 
-    coutry_list = find_and_select_country(NUM_OF_COUNTRIES_TO_COMPARE)
-    if coutry_list is None:
+    country_list = find_and_select_country(NUM_OF_COUNTRIES_TO_COMPARE)
+    if country_list is None:
         return
         
-    output_to_display(coutry_list)
+    output_to_display(country_list)
     
-    # input('Debug: End of run_country_comparison()')
-
            
 def main():
     while True:
