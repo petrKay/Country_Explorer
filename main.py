@@ -10,14 +10,27 @@ def clear_terminal():
     else:
         subprocess.run('clear', shell=True)
 
+    print_top_header()
+
+
+def print_top_header():
+    print("="*60)
+    #print(f'{"Country Explorer":^60}')
+    print(f'{"Country Search and Comparison":^60}')
+    print(f'{"Written by Petr K":^60}')
+    print(f'{"Data source: countries.dev":^60}')
+    print("="*60)
+    print()   
+
 
 def read_menu_choice():
     invalid_choice=False
 
     while True:
         clear_terminal()
-
-        print("Main Menu\n")
+       
+        print( f'{"Main Menu":^60}')
+        print()
         print("1. Get country information.")
         print("2. Compare two countries.\n")
   
@@ -25,7 +38,7 @@ def read_menu_choice():
             if not user_choice:
                 print("Error: Choice can't be empty")
             else: 
-                print('Error: Invalid choice. Use only "1","2" or "exit"')
+                print('Error: Invalid choice.')
 
         user_choice = input('Enter "1" or "2". Type "exit" to quit: ').casefold().strip()
 
@@ -38,7 +51,7 @@ def read_menu_choice():
 
 
 def select_country(country_list):
-    '''Lets user select one from all matching the request countries. '''
+    '''Let the user select one from all matching the request countries. '''
 
     list_length = len(country_list)
     if  list_length == 1:
@@ -50,7 +63,8 @@ def select_country(country_list):
         for i,country in enumerate(country_list, start = 1):
             print(f'{i}.', country['name'])
 
-        user_choice = input(f'Enter a number from 1 to {list_length} or type "exit" to go back to Main Menu: ').casefold().strip()
+        print()
+        user_choice = input(f'Enter a number from 1 to {list_length} or type "exit" to return to Main Menu: ').casefold().strip()
         print()
 
         if user_choice == "exit":
@@ -65,11 +79,12 @@ def select_country(country_list):
             if 1 <= num <= list_length:
                 return country_list[num-1]
             else:
-                input(f'The number you entered is out of range. Press "Enter" to continue. ')
+                print('The number you entered is out of range.')
+                input('Press "Enter" to continue. ')
    
   
 def try_again(in_string = None):
-    '''Prints 'Would you like to try again (y/n):' by default. Or in_string (str) is specified" 
+    '''Prints 'Would you like to try again (y/n):' by default. Or in_string (str) if specified" 
     returns True or False'''
 
     if in_string == None:
@@ -112,7 +127,7 @@ def fetch_countries(country_query):
 
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError):
-            print('A сonnection or timeout error occurred while trying to connect to the remote server. ')
+            print('A connection or timeout error occurred while trying to connect to the remote server. ')
 
             if try_again():
                 continue
@@ -134,17 +149,18 @@ def fetch_countries(country_query):
             
             for country in country_list:
                 if not isinstance(country, dict):
-                    input('Error: Expected to receive a country dict. Press "Enter" to continue. ')
+                    input('Error: Expected to receive a dictionary with country data. Press "Enter" to continue. ')
                     return None
 
                 if not country:
-                    input('Error: received an empty dict. Press "Enter" to continue. ')
+                    input('Error: Received an empty dictionary. Press "Enter" to continue. ')
                     return None
 
                 if "name" not in country:
                     input('Error: Key "name" is missing. Press "Enter" to continue. ')
                     return None
 
+                # checking only the country name because it is required for selection.
                 value = country["name"]
                 if  value is not None and str(value).strip() != "": 
                     continue
@@ -166,7 +182,7 @@ def read_country_query(country_num = None):
     while True:
         clear_terminal()
 
-        user_country_input = input(f'Enter {country_num} country name or "exit" to go back to Main Menu: ').casefold().strip()
+        user_country_input = input(f'Enter {country_num} country name or "exit" to return to Main Menu: ').casefold().strip()
         print()
 
         if user_country_input == "":
@@ -193,10 +209,19 @@ def output_to_display(countries):
     col_widths = {}
     # looking for a max width for each column and store it in col_widths
     for col, header_text in COLUMN_HEADERS.items():
-        col_values = [str(row.get(col,'Not available')) for row in countries]
+        # changing numbers to US format
+        col_values = []
+        for row in countries:
+            value = row.get(col,'Not available')
+
+            if isinstance(value, int):
+                col_values.append(f"{value:,}")
+            else:
+                 col_values.append(str(value))
+    
         all_texts = col_values + [header_text]
         max_width = max([len(text) for text in all_texts])
-        col_widths[col] = max_width + 2
+        col_widths[col] = max_width + 3  # add 3 spaces for easy reading
 
     # print header of the table
     header_row = ""
@@ -213,7 +238,7 @@ def output_to_display(countries):
             value = country.get(key, 'Not available')
 
             if isinstance(value, int):
-                 country_info = f"{value:,}"
+                country_info = f"{value:,}"
             else:
                 country_info = str(value)
                 
@@ -224,16 +249,16 @@ def output_to_display(countries):
 
 
 def find_and_select_country(country_count = None):
-    ''' Fetches all matching countries and lets user select one.
+    ''' Fetches all matching countries.
         country_count (int) How many countries need to be searched'''
-
+ 
     if not isinstance(country_count, int) and country_count is not None:
         input('Error: Expected an integer value for the country count.\nPress "Enter" to continue. ')
         return
     elif country_count is None:
         NUM_OF_COUNTRIES = 1
     elif country_count <= 0:
-        input('Error: Expected a positive integer value more than zero for the country count.\nPress "Enter" to continue. ')
+        input('Error: The country count must be a positive integer.\nPress "Enter" to continue. ')
         return None
     else:
         NUM_OF_COUNTRIES = country_count
@@ -252,7 +277,7 @@ def find_and_select_country(country_count = None):
         t_country_list = fetch_countries(country_query)   # temp list
 
         if t_country_list is None:
-            if try_again("Do you want to search for another country name? (y/n): "):
+            if try_again("Do you want to search using a different country name? (y/n): "):
                 continue
             else:
                 return None
@@ -263,7 +288,7 @@ def find_and_select_country(country_count = None):
             return None
         
         if t_country_to_display in country_list_to_display:
-            input('The country you choose is already in the comparison list.\n' 
+            input('The selected country is already in the comparison list.\n' 
                 'Press "Enter" to choose a different country. ')
             continue
         else:
@@ -287,6 +312,8 @@ def run_country_search():
 def run_country_comparison():
     clear_terminal()
 
+    # by changing NUM_OF_COUNTRIES_TO_COMPARE you can compare as many counties as needed
+    # user will make a manual search  input for each
     NUM_OF_COUNTRIES_TO_COMPARE = 2
 
     country_list = find_and_select_country(NUM_OF_COUNTRIES_TO_COMPARE)
